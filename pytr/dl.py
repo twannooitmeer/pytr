@@ -284,9 +284,18 @@ class DL:
                 self.log.warning(f"no subfolder mapping for {eventdesc}")
 
             for idx, doc in enumerate(section["data"]):
-                if isinstance(doc["action"]["payload"], dict):
+                payload = doc["action"]["payload"]
+                if isinstance(payload, dict):
+                    # Never index this payload directly. TR is still moving documents onto
+                    # API-path objects and not every variant carries a "path" key, so
+                    # payload["path"] can raise KeyError -- from inside the *warning* that
+                    # exists to report we cannot download it. dl_callback runs under
+                    # Timeline.process_timelineDetail, so anything raised here escapes into
+                    # the asyncio timeline loop and aborts the entire run, losing every
+                    # event, not just this one document.
                     self.log.warning(
-                        f'Download of document with new API-Path URL "{doc["action"]["payload"]["path"]}" is not possible. (yet?)'
+                        f"Download of document with new API-Path URL {payload.get('path') or payload}"
+                        " is not possible. (yet?)"
                     )
                     continue
                 has_docs = True
